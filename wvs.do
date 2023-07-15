@@ -2,6 +2,7 @@ clear all
 
 set more off
 
+* WVS dataset available for download here: https://www.worldvaluessurvey.org/WVSDocumentationWV7.jsp
 use "Z:\home\nath\wvs-7.dta"
 
 * total respondents
