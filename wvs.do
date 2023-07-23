@@ -1,8 +1,10 @@
+* Nathan Englehart (Spring, 2023)
+
 clear all
 
 set more off
 
-* WVS dataset available for download here: https://www.worldvaluessurvey.org/WVSDocumentationWV7.jsp
+* WVS dataset available for download here: https://www.worldvaluessurvey.org/WVSDocumentationWV7.jsp 
 use "Z:\home\nath\wvs-7.dta"
 
 * total respondents
@@ -29,6 +31,8 @@ recode gov_satisfaction 1=4 2=3 3=2 4=1
 * key independent variables
 gen homophobia = Q182
 recode homophobia 1=10 2=9 3=8 4=7 5=6 6=5 7=4 8=3 9=2 10=1
+gen homo_parents = Q36
+recode homo_parents 1=5 2=4 3=3 4=2 5=1  
 gen bearing_children = Q37
 recode bearing_children 1=4 2=3 3=2 4=1
 gen beat_wife = Q189
@@ -36,6 +40,12 @@ gen women_rights = Q249
 gen abortion = Q184
 gen housewife_fufilling = Q32
 recode housewife_fufilling 1=4 2=3 3=2 4=1
+recode Q29 1=5 2=4 3=3 4=2 5=1
+recode Q30 1=5 2=4 3=3 4=2 5=1
+recode Q31 1=5 2=4 3=3 4=2 5=1
+gen sexism = Q29 + Q30 + Q31
+gen unions = Q68
+recode unions 1=4 2=3 3=2 4=1
 
 * dep vars for probit robustness check
 *gen ur = 1
@@ -77,65 +87,105 @@ drop if gov_satisfaction < 0
 * global model specifications
 local controls "i.female age educ i.ethnic_minority"
 local dep_var "gov_satisfaction"
+local indep_vars ""
+local conditions "if ses == 2"
 
 * color scheme for marginal effects plots and marginal probabilities plots
 local me_color_opts "nodraw ylabel(-0.02(0.01)0.02) yline(0, lcolor(black)) plot1opts(color(red)) ciopt(color(red))"
 local prob_color_opts "nodraw noci ylabel(0(0.1)0.5) plot1opts(color(red)) plot2opts(color(purple)) plot3opts(color(blue)) plot4opts(color(green))"
 
-* Justif. of homosexuality
-eststo p1: oprobit `dep_var' homophobia `controls' if ses == 2 & homophobia > 0, r
-eststo m1: margins, dydx(homophobia) post
-marginsplot, ytitle("ME of Justif. of Homosex.") xtitle("Conf. in Gov. (LO->HI)") title("") name(graph1, replace) `me_color_opts' 
+* Control Model
+eststo control: oprobit `dep_var' `controls' `conditions', r
 
-oprobit `dep_var' homophobia `controls' if homophobia > 0 & ses == 2, r
+* Justif. of homosexuality
+local indep_vars = "`indep_vars'" + " " + "homophobia"
+local conditions = "`conditions'" + " & " + "homophobia > 0"
+eststo p1: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m1: margins, dydx(homophobia) post
+
+* Homo. Parents
+local indep_vars = "`indep_vars'" + " " + "homo_parents"
+local conditions = "`conditions'" + " & " + "homo_parents > 0"
+eststo p2: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m2: margins, dydx(homophobia) post
+
+* Sexism
+local indep_vars = "`indep_vars'" + " " + "sexism"
+local conditions = "`conditions'" + " & " + "Q29 > 0 & Q30 > 0 & Q31 > 0"
+eststo p3: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m3: margins, dydx(homophobia) post
+
+* Women's rights model
+local indep_vars = "`indep_vars'" + " " + "women_rights"
+local conditions = "`conditions'" + " & " + "women_rights > 0"
+eststo p4: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m4: margins, dydx(homophobia women_rights) post
+
+* Importance of bearing children model
+local indep_vars = "`indep_vars'" + " " + "bearing_children"
+local conditions = "`conditions'" + " & " + "bearing_children > 0"
+eststo p5: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m5: margins, dydx(homophobia women_rights bearing_children) post
+
+* Justif. of abortion
+local indep_vars = "`indep_vars'" + " " + "abortion"
+local conditions = "`conditions'" + " & " + "abortion > 0"
+eststo p6: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m6: margins, dydx(homophobia women_rights bearing_children abortion) post
+
+* Justif. of beating wife model
+local indep_vars = "`indep_vars'" + " " + "beat_wife"
+local conditions = "`conditions'" + " & " + "beat_wife > 0"
+eststo p7: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m7: margins, dydx(homophobia women_rights bearing_children abortion) post
+
+* Confidence in unions
+eststo p8: oprobit `dep_var' `indep_vars' unions `controls' `conditions' & unions > 0, r
+eststo m8: margins, dydx(homophobia women_rights bearing_children abortion unions) post
+
+* Marginal Probs for homophobia
+quietly oprobit `dep_var' `indep_vars' unions `controls' `conditions' & unions > 0, r
 margins, at(homophobia=(1(1)10)) post
 marginsplot, name(grapha, replace) `prob_color_opts'
 
-* Women's rights model
-eststo p2: oprobit `dep_var' women_rights `controls' if ses == 2 & women_rights > 0, r
-eststo m2: margins, dydx(women_rights) post
-marginsplot, ytitle("ME of Import. of Women's Rights") xtitle("Conf. in Gov. (LO->HI)") title("") name(graph3, replace) `me_color_opts' 
-
-oprobit `dep_var' women_rights `controls' if women_rights > 0 & ses == 2, r
+* Marginal Probs for women's rights
+quietly oprobit `dep_var' `indep_vars' unions `controls' `conditions' & unions > 0, r
 margins, at(women_rights=(1(1)10)) post
 marginsplot, name(graphb, replace) `prob_color_opts'
 
-* Importance of bearing children model
-eststo p3: oprobit `dep_var' bearing_children `controls' if ses == 2 & bearing_children > 0, r
-eststo m3: margins, dydx(bearing_children) post
-marginsplot, ytitle("ME of Import. of Children") xtitle("Conf. in Gov. (LO->HI)") title("") name(graph5, replace) `me_color_opts' 
-
-oprobit `dep_var' bearing_children `controls' if bearing_children > 0 & ses == 2, r
-margins, at(bearing_children=(1(1)5)) post
+* Marginal Probs for unions
+quietly oprobit `dep_var' `indep_vars' unions `controls' `conditions' & unions > 0, r
+margins, at(unions=(1(1)4)) post
 marginsplot, name(graphc, replace) `prob_color_opts'
 
-* Justif. of beating wife model
-eststo p4: oprobit `dep_var' beat_wife `controls' if ses == 2 & beat_wife > 0, r
-eststo m4: margins, dydx(beat_wife) post
-marginsplot, ytitle("ME of Justif. of Beating Wife") xtitle("Conf. in Gov. (LO->HI)") title("") name(graph6, replace) `me_color_opts' 
+* Marginal Effects of Homophobia vs. Unions Graph
+quietly oprobit `dep_var' `indep_vars' unions `controls' `conditions' & unions > 0, r
+quietly margins, dydx(homophobia) post
+est store homophobia_
+quietly oprobit `dep_var' `indep_vars' unions `controls' `conditions' & unions > 0, r
+quietly margins, dydx(unions) post
+est store unions_ 
 
-oprobit `dep_var' beat_wife `controls' if beat_wife > 0 & ses == 2, r
-margins, at(beat_wife=(1(1)10)) post
-marginsplot, name(graphd, replace) `prob_color_opts'
+* Cronbach's alpha for sexism index
+alpha Q29 Q30 Q31 if Q29 > 0 & Q30 > 0 & Q31 > 0
 
-* Additional reference models
-eststo control: oprobit `dep_var' `controls' if ses == 2, r
-eststo ns1: oprobit `dep_var' abortion `controls' if abortion > 0 & ses == 2, r
-eststo ns2: oprobit `dep_var' housewife_fufilling `controls' if housewife_fufilling > 0 & ses == 2, r
+* Correlation matrix of attitudes towards gender/sexuality (Table 1)
+corr sexism abortion beat_wife bearing_children women_rights homophobia homo_parents
 
-* Regression Tables
-esttab control p1 p2 p3 ns1 ns2 p4, pr2 drop("0.*") eqlabels(none) 
+* Regression table (Table 2)
+esttab p1 p2 p3 p4 p5 p6 p7 p8, drop("0.*") eqlabels(none) pr2
 
-* Regression Tables (latex)
-*esttab control p1 p2 p3 ns1 ns2 p4 using "tab1.tex", pr2 drop("0.*") eqlabels(none) 
+* Regression table (latex)
+*esttab control p1 p2 p3 p4 p5 p6 p7 p8 using "tab2.tex", drop("0.*") eqlabels(none) pr2
 
-* ME Tables (not included in paper)
-esttab m1 m2 m3 m4, pr2 eqlabels(none)
+* Marginal Effects (Table 3)
+esttab m1 m2 m3 m4 m5 m6 m7 m8
 
-* ME Figures
-graph combine graph1 graph3 graph5 graph6, name(first)
+* Marginal Effects (latex)
+*esttab m1 m2 m3 m4 m5 m6 m7 m8 using "tab3.tex"
 
-* Pred Probs Figures
-graph combine grapha graphb, name(second)
-graph combine graphc graphd, name(third)
+* Predicted Prob (Fig 1)
+graph combine grapha graphb graphc, name(first)
 
+* Marginal Effects (Fig 2)
+coefplot homophobia_ unions_, vertical xtitle("Conf. in Gov. (LO->HI)") ytitle("Marginal Effects") title("") yline(0, lcolor(black)) ciopts(recast(rcap)) recast(connected) coeflabels(1._predict = "1" 2._predict = "2" 3._predict = "3" 4._predict = "4") name(discussion, replace)
