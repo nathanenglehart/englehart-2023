@@ -44,8 +44,9 @@ recode Q29 1=5 2=4 3=3 4=2 5=1
 recode Q30 1=5 2=4 3=3 4=2 5=1
 recode Q31 1=5 2=4 3=3 4=2 5=1
 gen sexism = Q29 + Q30 + Q31
+gen divorce = Q185
 
-* dep vars for probit robustness check
+* dep vars if probit check desired (ur = united russia voter)
 *gen ur = 1
 *replace ur = 0 if Q223 != 643032
 *gen confident = 1
@@ -129,13 +130,19 @@ eststo m5: margins, dydx(homophobia women_rights bearing_children) post
 local indep_vars = "`indep_vars'" + " " + "abortion"
 local conditions = "`conditions'" + " & " + "abortion > 0"
 eststo p6: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m6: margins, dydx(homophobia women_rights bearing_children abortion) post
+eststo m6: margins, dydx(homophobia women_rights bearing_children) post
+
+* Justif. of divorce
+local indep_vars = "`indep_vars'" + " " + "divorce"
+local conditions = "`conditions'" + " & " + "divorce > 0"
+eststo p7: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m7: margins, dydx(homophobia women_rights bearing_children) post
 
 * Justif. of beating wife model
 local indep_vars = "`indep_vars'" + " " + "beat_wife"
 local conditions = "`conditions'" + " & " + "beat_wife > 0"
-eststo p7: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m7: margins, dydx(homophobia women_rights bearing_children abortion) post
+eststo p8: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+eststo m8: margins, dydx(homophobia women_rights bearing_children) post
 
 * Marginal Probs for homophobia
 quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
@@ -147,15 +154,10 @@ quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
 margins, at(women_rights=(1(1)10)) post
 marginsplot, name(graphb, replace) `prob_color_opts'
 
-* Marginal Probs for abortion
-quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
-margins, at(abortion=(1(1)10)) post
-marginsplot, name(graphc, replace) `prob_color_opts'
-
 * Marginal Probs for bearing_children
 quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
 margins, at(bearing_children=(1(1)5)) post
-marginsplot, name(graphd, replace) `prob_color_opts'
+marginsplot, name(graphc, replace) `prob_color_opts'
 
 * Marginal Effects of Homophobia vs. women's rights vs. bearing_children .... (test later)
 quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
@@ -164,9 +166,6 @@ est store homophobia_
 quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
 quietly margins, dydx(women_rights) post
 est store women_rights_ 
-quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
-quietly margins, dydx(abortion) post
-est store abortion_
 quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
 quietly margins, dydx(bearing_children) post
 est store bearing_children_ 
@@ -178,20 +177,21 @@ alpha Q29 Q30 Q31 if Q29 > 0 & Q30 > 0 & Q31 > 0
 corr sexism abortion beat_wife bearing_children women_rights homophobia homo_parents
 
 * Regression table (Table 2)
-esttab control p1 p2 p3 p4 p5 p6 p7, drop("0.*") eqlabels(none) pr2
+esttab p1 p2 p3 p4 p5 p6 p7 p8, drop("0.*") eqlabels(none) pr2
 
 * Regression table (latex)
-esttab control p1 p2 p3 p4 p5 p6 p7 using "tab2.tex", drop("0.*") eqlabels(none) pr2
+esttab control p1 p2 p3 p4 p5 p6 p7 p8 using "tab2.tex", drop("0.*") eqlabels(none) pr2
 
 * Marginal Effects (Table 3)
-esttab m1 m2 m3 m4 m5 m6 m7
+esttab m1 m2 m3 m4 m5 m6 m7 m8
 
 * Marginal Effects (latex)
-esttab m1 m2 m3 m4 m5 m6 m7 using "tab3.tex"
+esttab m1 m2 m3 m4 m5 m6 m7 m8 using "tab3.tex"
 
 * Predicted Prob (Fig 1)
-graph combine grapha graphb graphc graphd, name(first)
+graph combine grapha graphb graphc, name(first)
 
 * Marginal Effects (Fig 2)
-coefplot homophobia_ women_rights_ abortion_ bearing_children_, vertical xtitle("Conf. in Gov. (LO->HI)") ytitle("Marginal Effects") title("") yline(0, lcolor(black)) ciopts(recast(rcap)) recast(connected) coeflabels(1._predict = "1" 2._predict = "2" 3._predict = "3" 4._predict = "4") name(discussion, replace)
-* (test later - see above)
+coefplot homophobia_ women_rights_ bearing_children_, vertical xtitle("Conf. in Gov. (LO->HI)") ytitle("Marginal Effects") title("") yline(0, lcolor(black)) ciopts(recast(rcap)) recast(connected) coeflabels(1._predict = "1" 2._predict = "2" 3._predict = "3" 4._predict = "4") name(second, replace)
+
+
