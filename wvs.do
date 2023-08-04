@@ -32,7 +32,6 @@ recode gov_satisfaction 1=4 2=3 3=2 4=1
 gen homophobia = Q182
 recode homophobia 1=10 2=9 3=8 4=7 5=6 6=5 7=4 8=3 9=2 10=1
 gen homo_parents = Q36
-recode homo_parents 1=5 2=4 3=3 4=2 5=1  
 gen bearing_children = Q37
 recode bearing_children 1=4 2=3 3=2 4=1
 gen beat_wife = Q189
@@ -86,112 +85,75 @@ drop if gov_satisfaction < 0
 * global model specifications
 local controls "i.female age educ i.ethnic_minority"
 local dep_var "gov_satisfaction"
-local indep_vars ""
-local conditions "if ses == 2"
 
 * color scheme for marginal effects plots and marginal probabilities plots
 local me_color_opts "nodraw ylabel(-0.02(0.01)0.02) yline(0, lcolor(black)) plot1opts(color(red)) ciopt(color(red))"
 local prob_color_opts "nodraw noci ylabel(0(0.1)0.5) plot1opts(color(red)) plot2opts(color(purple)) plot3opts(color(blue)) plot4opts(color(green))"
 
-* Control Model
-eststo control: oprobit `dep_var' `controls' `conditions', r
+* Control model
+eststo control: oprobit `dep_var' `controls' `conditions' if ses == 2, r
 
-* Justif. of homosexuality
-local indep_vars = "`indep_vars'" + " " + "homophobia"
-local conditions = "`conditions'" + " & " + "homophobia > 0"
-eststo p1: oprobit `dep_var' `indep_vars' `controls' `conditions', r
+* LGBTQ+ model 
+eststo p1: oprobit `dep_var' homophobia homo_parents `controls' if ses == 2 & homophobia > 0 & homo_parents > 0, r
 eststo m1: margins, dydx(homophobia) post
 
-* Homo. Parents
-local indep_vars = "`indep_vars'" + " " + "homo_parents"
-local conditions = "`conditions'" + " & " + "homo_parents > 0"
-eststo p2: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m2: margins, dydx(homophobia) post
-
-* Sexism
-local indep_vars = "`indep_vars'" + " " + "sexism"
-local conditions = "`conditions'" + " & " + "Q29 > 0 & Q30 > 0 & Q31 > 0"
-eststo p3: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m3: margins, dydx(homophobia) post
-
 * Women's rights model
-local indep_vars = "`indep_vars'" + " " + "women_rights"
-local conditions = "`conditions'" + " & " + "women_rights > 0"
-eststo p4: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m4: margins, dydx(homophobia women_rights) post
+eststo p2: oprobit `dep_var' sexism women_rights bearing_children abortion divorce beat_wife `controls' if ses == 2 & women_rights > 0 & Q29 > 0 & Q30 > 0 & Q31 > 0 & bearing_children > 0 & abortion > 0 & divorce > 0 & beat_wife > 0, r
+eststo m2: margins, dydx(women_rights bearing_children) post
 
-* Importance of bearing children model
-local indep_vars = "`indep_vars'" + " " + "bearing_children"
-local conditions = "`conditions'" + " & " + "bearing_children > 0"
-eststo p5: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m5: margins, dydx(homophobia women_rights bearing_children) post
+local key_indep = "homophobia homo_parents sexism women_rights bearing_children abortion divorce beat_wife"
+local conditions = "if ses == 2 & homophobia > 0 & homo_parents > 0 & Q29 > 0 & Q30 > 0 & Q31 > 0 & women_rights > 0 & bearing_children > 0 & abortion > 0 & divorce > 0 & beat_wife > 0"
 
-* Justif. of abortion
-local indep_vars = "`indep_vars'" + " " + "abortion"
-local conditions = "`conditions'" + " & " + "abortion > 0"
-eststo p6: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m6: margins, dydx(homophobia women_rights bearing_children) post
-
-* Justif. of divorce
-local indep_vars = "`indep_vars'" + " " + "divorce"
-local conditions = "`conditions'" + " & " + "divorce > 0"
-eststo p7: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m7: margins, dydx(homophobia women_rights bearing_children) post
-
-* Justif. of beating wife model
-local indep_vars = "`indep_vars'" + " " + "beat_wife"
-local conditions = "`conditions'" + " & " + "beat_wife > 0"
-eststo p8: oprobit `dep_var' `indep_vars' `controls' `conditions', r
-eststo m8: margins, dydx(homophobia women_rights bearing_children) post
+* Full model
+eststo p3: oprobit `dep_var' `key_indep' `controls' `conditions', r
+eststo m3: margins, dydx(homophobia women_rights bearing_children) post
 
 * Marginal Probs for homophobia
-quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
+quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 margins, at(homophobia=(1(1)10)) post
 marginsplot, name(grapha, replace) `prob_color_opts'
 
 * Marginal Probs for women's rights
-quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
+quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 margins, at(women_rights=(1(1)10)) post
 marginsplot, name(graphb, replace) `prob_color_opts'
 
 * Marginal Probs for bearing_children
-quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
+quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 margins, at(bearing_children=(1(1)5)) post
 marginsplot, name(graphc, replace) `prob_color_opts'
 
 * Marginal Effects of Homophobia vs. women's rights vs. bearing_children .... (test later)
-quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
+quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 quietly margins, dydx(homophobia) post
 est store homophobia_
-quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
+quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 quietly margins, dydx(women_rights) post
 est store women_rights_ 
-quietly oprobit `dep_var' `indep_vars' `controls' `conditions', r
+quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 quietly margins, dydx(bearing_children) post
 est store bearing_children_ 
 
 * Cronbach's alpha for sexism index
 alpha Q29 Q30 Q31 if Q29 > 0 & Q30 > 0 & Q31 > 0
 
-* Correlation matrix of attitudes towards gender/sexuality (Table 1)
-corr sexism abortion beat_wife bearing_children women_rights homophobia homo_parents
+* Correlation matrix of attitudes towards gender/sexuality (Table 2)
+pwcorr sexism abortion beat_wife bearing_children women_rights homophobia homo_parents divorce, sig
 
-* Regression table (Table 2)
-esttab p1 p2 p3 p4 p5 p6 p7 p8, drop("0.*") eqlabels(none) pr2
+* Regression table (Table 3)
+esttab control p1 p2 p3, drop("0.*") eqlabels(none) pr2
 
 * Regression table (latex)
-esttab control p1 p2 p3 p4 p5 p6 p7 p8 using "tab2.tex", drop("0.*") eqlabels(none) pr2
+esttab control p1 p2 p3 using "tab3.tex", drop("0.*") eqlabels(none) pr2
 
-* Marginal Effects (Table 3)
-esttab m1 m2 m3 m4 m5 m6 m7 m8
+* Marginal Effects (Table 4)
+esttab m1 m2 m3 
 
 * Marginal Effects (latex)
-esttab m1 m2 m3 m4 m5 m6 m7 m8 using "tab3.tex"
+esttab m1 m2 m3 using "tab4.tex"
 
-* Predicted Prob (Fig 1)
-graph combine grapha graphb graphc, name(first)
-
-* Marginal Effects (Fig 2)
+* Marginal Effects (Fig 1)
 coefplot homophobia_ women_rights_ bearing_children_, vertical xtitle("Conf. in Gov. (LO->HI)") ytitle("Marginal Effects") title("") yline(0, lcolor(black)) ciopts(recast(rcap)) recast(connected) coeflabels(1._predict = "1" 2._predict = "2" 3._predict = "3" 4._predict = "4") name(second, replace)
 
-
+* Predicted Prob (Fig 2)
+graph combine grapha graphb graphc, name(first)
