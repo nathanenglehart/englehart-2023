@@ -25,8 +25,8 @@ replace ethnic_minority = 0 if Q290 != 643001
 gen ses = Q288R
 
 * dependent variables
-gen gov_satisfaction = Q71
-recode gov_satisfaction 1=4 2=3 3=2 4=1
+gen gov_confidence = Q71
+recode gov_confidence 1=4 2=3 3=2 4=1
 
 * key independent variables
 gen homophobia = Q182
@@ -49,7 +49,7 @@ gen divorce = Q185
 *gen ur = 1
 *replace ur = 0 if Q223 != 643032
 *gen confident = 1
-*replace confident = 0 if gov_satisfaction == 1 | gov_satisfaction == 2
+*replace confident = 0 if gov_confidence == 1 | gov_confidence == 2
 
 * other notable variables not used in this sequence:
 *gen strong_leader = Q235
@@ -80,11 +80,11 @@ drop if Q290 < 0
 drop if Q260 < 0
 
 * dep vars
-drop if gov_satisfaction < 0
+drop if gov_confidence < 0
 
 * global model specifications
 local controls "i.female age educ i.ethnic_minority"
-local dep_var "gov_satisfaction"
+local dep_var "gov_confidence"
 
 * color scheme for marginal effects plots and marginal probabilities plots
 local me_color_opts "nodraw ylabel(-0.02(0.01)0.02) yline(0, lcolor(black)) plot1opts(color(red)) ciopt(color(red))"
@@ -93,13 +93,12 @@ local prob_color_opts "nodraw noci ylabel(0(0.1)0.5) plot1opts(color(red)) plot2
 * Control model
 eststo control: oprobit `dep_var' `controls' `conditions' if ses == 2, r
 
-* LGBTQ+ model 
-eststo p1: oprobit `dep_var' homophobia homo_parents `controls' if ses == 2 & homophobia > 0 & homo_parents > 0, r
-eststo m1: margins, dydx(homophobia) post
+* Neo-Soviet model 
+eststo p1: oprobit `dep_var' homophobia women_rights bearing_children `controls' if ses == 2 & homophobia > 0 & homo_parents > 0, r
+eststo m1: margins, dydx(homophobia women_rights bearing_children) post
 
-* Women's rights model
-eststo p2: oprobit `dep_var' sexism women_rights bearing_children abortion divorce beat_wife `controls' if ses == 2 & women_rights > 0 & Q29 > 0 & Q30 > 0 & Q31 > 0 & bearing_children > 0 & abortion > 0 & divorce > 0 & beat_wife > 0, r
-eststo m2: margins, dydx(women_rights bearing_children) post
+* Hard-line conservative model
+eststo p2: oprobit `dep_var' homo_parents sexism abortion divorce beat_wife `controls' if ses == 2 & women_rights > 0 & Q29 > 0 & Q30 > 0 & Q31 > 0 & bearing_children > 0 & abortion > 0 & divorce > 0 & beat_wife > 0, r
 
 local key_indep = "homophobia homo_parents sexism women_rights bearing_children abortion divorce beat_wife"
 local conditions = "if ses == 2 & homophobia > 0 & homo_parents > 0 & Q29 > 0 & Q30 > 0 & Q31 > 0 & women_rights > 0 & bearing_children > 0 & abortion > 0 & divorce > 0 & beat_wife > 0"
@@ -144,13 +143,13 @@ pwcorr sexism abortion beat_wife bearing_children women_rights homophobia homo_p
 esttab control p1 p2 p3, drop("0.*") eqlabels(none) pr2
 
 * Regression table (latex)
-esttab control p1 p2 p3 using "tab3.tex", drop("0.*") eqlabels(none) pr2
+*esttab control p1 p2 p3 using "tab3.tex", drop("0.*") eqlabels(none) pr2
 
 * Marginal Effects (Table 4)
-esttab m1 m2 m3 
+esttab m1 m3 
 
 * Marginal Effects (latex)
-esttab m1 m2 m3 using "tab4.tex"
+*esttab m1 m3 using "tab4.tex"
 
 * Marginal Effects (Fig 1)
 coefplot homophobia_ women_rights_ bearing_children_, vertical xtitle("Conf. in Gov. (LO->HI)") ytitle("Marginal Effects") title("") yline(0, lcolor(black)) ciopts(recast(rcap)) recast(connected) coeflabels(1._predict = "1" 2._predict = "2" 3._predict = "3" 4._predict = "4") name(second, replace)
