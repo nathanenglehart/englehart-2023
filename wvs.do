@@ -110,17 +110,17 @@ eststo m3: margins, dydx(homophobia women_rights bearing_children) post
 * Marginal Probs for homophobia
 quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 margins, at(homophobia=(1(1)10)) post
-marginsplot, name(grapha, replace) `prob_color_opts'
+marginsplot, xtitle("Homophobia") name(grapha, replace) `prob_color_opts' legend(on order(1 "none at all" 2 "not very much" 3 "quite a lot" 4 "a great deal"))
 
 * Marginal Probs for women's rights
 quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 margins, at(women_rights=(1(1)10)) post
-marginsplot, name(graphb, replace) `prob_color_opts'
+marginsplot, xtitle("Women's Rights") name(graphb, replace) `prob_color_opts' legend(on order(1 "none at all" 2 "not very much" 3 "quite a lot" 4 "a great deal"))
 
 * Marginal Probs for bearing_children
 quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
 margins, at(bearing_children=(1(1)5)) post
-marginsplot, name(graphc, replace) `prob_color_opts'
+marginsplot, xtitle("Bearing Children")  name(graphc, replace) `prob_color_opts' legend(on order(1 "none at all" 2 "not very much" 3 "quite a lot" 4 "a great deal")) 
 
 * Marginal Effects of Homophobia vs. women's rights vs. bearing_children .... (test later)
 quietly oprobit `dep_var' `key_indep' `controls' `conditions', r
@@ -152,7 +152,7 @@ esttab m1 m3
 *esttab m1 m3 using "tab4.tex"
 
 * Marginal Effects (Fig 1)
-coefplot homophobia_ women_rights_ bearing_children_, vertical xtitle("Conf. in Gov. (LO->HI)") ytitle("Marginal Effects") title("") yline(0, lcolor(black)) ciopts(recast(rcap)) recast(connected) coeflabels(1._predict = "1" 2._predict = "2" 3._predict = "3" 4._predict = "4") name(second, replace)
+coefplot (homophobia_, label(Homophobia)) (women_rights_, label(Women's Rights)) (bearing_children_, label(Bearing Children)), vertical xtitle("Conf. in Gov. (LO->HI)") ytitle("Marginal Effects") title("") yline(0, lcolor(black)) ciopts(recast(rcap)) recast(connected) coeflabels(1._predict = "1" 2._predict = "2" 3._predict = "3" 4._predict = "4") name(first, replace) 
 
 * Predicted Prob (Fig 2)
-graph combine grapha graphb graphc, name(first)
+graph combine grapha graphb graphc, name(second)
